@@ -24,12 +24,12 @@ class APNSDataOverflow(APNSError):
 APNS_MAX_NOTIFICATION_SIZE = 256
 
 
-def _apns_create_socket():
+def _apns_create_socket(conf="default"):
 	sock = socket()
-	certfile = SETTINGS.get("APNS_CERTIFICATE")
+	certfile = SETTINGS.get(conf).get("APNS_CERTIFICATE")
 	if not certfile:
 		raise ImproperlyConfigured(
-			'You need to set PUSH_NOTIFICATIONS_SETTINGS["APNS_CERTIFICATE"] to send messages through APNS.'
+			'You need to set PUSH_NOTIFICATIONS_SETTINGS["%s"]["APNS_CERTIFICATE"] to send messages through APNS.' % conf
 		)
 
 	try:
@@ -40,7 +40,7 @@ def _apns_create_socket():
 		raise ImproperlyConfigured("The APNS certificate file at %r is not readable: %s" % (certfile, e))
 
 	sock = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_SSLv3, certfile=certfile)
-	sock.connect((SETTINGS["APNS_HOST"], SETTINGS["APNS_PORT"]))
+	sock.connect((SETTINGS.get(conf).get("APNS_HOST"), SETTINGS.get(conf).get("APNS_PORT")))
 
 	return sock
 
@@ -50,7 +50,7 @@ def _apns_pack_message(token, data):
 	return struct.pack(format, b"\0", 32, unhexlify(token), len(data), data)
 
 
-def _apns_send(token, alert, badge=0, sound="chime", content_available=False, action_loc_key=None, loc_key=None, loc_args=[], extra={}, socket=None):
+def _apns_send(token, alert, badge=0, sound="chime", content_available=False, action_loc_key=None, loc_key=None, loc_args=[], extra={}, socket=None, conf="default"):
 	data = {}
 
 	if action_loc_key or loc_key or loc_args:
@@ -86,7 +86,7 @@ def _apns_send(token, alert, badge=0, sound="chime", content_available=False, ac
 	if socket:
 		socket.write(data)
 	else:
-		socket = _apns_create_socket()
+		socket = _apns_create_socket(conf=conf)
 		socket.write(data)
 		socket.close()
 
@@ -108,7 +108,7 @@ def apns_send_bulk_message(registration_ids, data, **kwargs):
 	Sends an APNS notification to one or more registration_ids.
 	The registration_ids argument needs to be a list.
 	"""
-	socket = _apns_create_socket()
+	socket = _apns_create_socket(conf=kwargs.get("conf", "default"))
 	for registration_id in registration_ids:
 		_apns_send(registration_id, data, socket=socket, **kwargs)
 

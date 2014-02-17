@@ -32,10 +32,12 @@ def _chunks(l, n):
 		yield l[i:i + n]
 
 
-def _gcm_send(data, content_type):
+def _gcm_send(data, content_type, conf="default"):
 	key = SETTINGS.get("GCM_API_KEY")
 	if not key:
-		raise ImproperlyConfigured('You need to set PUSH_NOTIFICATIONS_SETTINGS["GCM_API_KEY"] to send messages through GCM.')
+		raise ImproperlyConfigured(
+            'You need to set PUSH_NOTIFICATIONS_SETTINGS["%s"]["GCM_API_KEY"] to send messages through GCM.' % conf
+        )
 
 	headers = {
 		"Content-Type": content_type,
@@ -43,7 +45,7 @@ def _gcm_send(data, content_type):
 		"Content-Length": str(len(data)),
 	}
 
-	request = Request(SETTINGS["GCM_POST_URL"], data, headers)
+	request = Request(SETTINGS.get(conf).get("GCM_POST_URL"), data, headers)
 	response = urlopen(request)
 	result = response.read()
 
@@ -53,7 +55,7 @@ def _gcm_send(data, content_type):
 	return result
 
 
-def gcm_send_message(registration_id, data, collapse_key=None):
+def gcm_send_message(registration_id, data, collapse_key=None, conf="default"):
 	"""
 	Sends a GCM notification to a single registration_id.
 	This will send the notification as form data.
@@ -70,10 +72,10 @@ def gcm_send_message(registration_id, data, collapse_key=None):
 		values["data.%s" % (k)] = v.encode("utf-8")
 
 	data = urlencode(values)
-	return _gcm_send(data, "application/x-www-form-urlencoded;charset=UTF-8")
+	return _gcm_send(data, "application/x-www-form-urlencoded;charset=UTF-8", conf=conf)
 
 
-def gcm_send_bulk_message(registration_ids, data, collapse_key=None, delay_while_idle=False):
+def gcm_send_bulk_message(registration_ids, data, collapse_key=None, delay_while_idle=False, conf="default"):
 	"""
 	Sends a GCM notification to one or more registration_ids. The registration_ids
 	needs to be a list.
@@ -82,11 +84,11 @@ def gcm_send_bulk_message(registration_ids, data, collapse_key=None, delay_while
 
 	# GCM only allows up to 1000 reg ids per bulk message
 	# https://developer.android.com/google/gcm/gcm.html#request
-	max_recipients = SETTINGS.get("GCM_MAX_RECIPIENTS")
+	max_recipients = SETTINGS.get(conf).get("GCM_MAX_RECIPIENTS")
 	if len(registration_ids) > max_recipients:
 		ret = []
 		for chunk in _chunks(registration_ids, max_recipients):
-			ret.append(gcm_send_bulk_message(chunk, data, collapse_key, delay_while_idle))
+			ret.append(gcm_send_bulk_message(chunk, data, collapse_key, delay_while_idle, conf))
 		return "\n".join(ret)
 
 	values = {
@@ -99,4 +101,4 @@ def gcm_send_bulk_message(registration_ids, data, collapse_key=None, delay_while
 		values["delay_while_idle"] = delay_while_idle
 
 	data = json.dumps(values)
-	return _gcm_send(data, "application/json")
+	return _gcm_send(data, "application/json", conf=conf)
