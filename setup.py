@@ -29,9 +29,9 @@ setup(
 	author = push_notifications.__author__,
 	author_email = push_notifications.__email__,
 	classifiers = CLASSIFIERS,
-	description = "Send push notifications to mobile devices through GCM or APNS in Django.",
-	download_url = "https://github.com/Adys/django-push-notifications/tarball/master",
+	description = "Send push notifications to mobile devices through GCM or APNS in Django. This fork allows multiple setting environments.",
+	download_url = "https://github.com/holzenburg/django-push-notifications/tarball/master",
 	long_description = README,
-	url = "https://github.com/Adys/django-push-notifications",
+	url = "https://github.com/holzenburg/django-push-notifications",
 	version = push_notifications.__version__,
 )
